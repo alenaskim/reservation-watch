@@ -1,0 +1,26 @@
+# Restaurants to watch. Add or remove entries, commit, and the next run picks them up.
+#
+# Per restaurant:
+#   name:       anything you like (used in the alert)
+#   resy:       the restaurant's resy.com page URL        } use one of
+#   opentable:  the restaurant's opentable.com page URL   } these two
+#   dates:      specific dates to check, e.g. [2026-11-07, 2026-11-08]
+#     — or —
+#   next_days:  check the next N days (default 14)
+#   weekdays:   optional filter for next_days, e.g. [fri, sat]
+#   times:      time window, e.g. "18:00-21:30" (default: any time)
+#   party_size: overrides the default below
+
+party_size: 2
+
+watch:
+  - name: Lilia
+    resy: https://resy.com/cities/new-york-ny/venues/lilia
+    next_days: 21
+    weekdays: [thu, fri, sat]
+    times: "18:00-21:30"
+
+  - name: Le Bernardin
+    opentable: https://www.opentable.com/r/le-bernardin-new-york
+    dates: [2026-11-07, 2026-11-14]
+    times: "19:00-21:00"

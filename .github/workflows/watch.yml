@@ -1,0 +1,50 @@
+name: Reservation watch
+
+on:
+  schedule:
+    # Every 15 minutes (UTC). GitHub often runs scheduled jobs a few minutes late.
+    # Private repos get 2,000 free Action minutes/month; each run bills at least 1 minute,
+    # so in a private repo use "*/30 * * * *" or limit the hours (see README).
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: reservation-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Install Chromium (only if any OpenTable restaurants are listed)
+        run: |
+          if grep -q "opentable:" restaurants.yaml; then
+            python -m playwright install --with-deps chromium
+          fi
+
+      # Remembers which slots were already alerted, so you don't get pinged every run.
+      - uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: seen-${{ github.run_id }}
+          restore-keys: seen-
+
+      - run: python watch.py
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: state
+          key: seen-${{ github.run_id }}
