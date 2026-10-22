@@ -1,26 +1,46 @@
 # Restaurants to watch. Add or remove entries, commit, and the next run picks them up.
 #
-# Per restaurant:
+# Per restaurant (anything left out uses `defaults` below):
 #   name:       anything you like (used in the alert)
 #   resy:       the restaurant's resy.com page URL        } use one of
 #   opentable:  the restaurant's opentable.com page URL   } these two
 #   dates:      specific dates to check, e.g. [2026-11-07, 2026-11-08]
 #     — or —
-#   next_days:  check the next N days (default 14)
-#   weekdays:   optional filter for next_days, e.g. [fri, sat]
-#   times:      time window, e.g. "18:00-21:30" (default: any time)
-#   party_size: overrides the default below
+#   next_days:  check the next N days
+#   weekdays:   only these days, e.g. [fri, sat]
+#   times:      time window, e.g. "18:00-21:30"
+#   party_size: number of people
+#   resy_venue_id: pins the exact Resy venue (the run log prints it)
 
 party_size: 2
 
-watch:
-  - name: Lilia
-    resy: https://resy.com/cities/new-york-ny/venues/lilia
-    next_days: 21
-    weekdays: [thu, fri, sat]
-    times: "18:00-21:30"
+defaults:
+  next_days: 21
+  times: "17:30-21:30"
 
-  - name: Le Bernardin
-    opentable: https://www.opentable.com/r/le-bernardin-new-york
-    dates: [2026-11-07, 2026-11-14]
-    times: "19:00-21:00"
+watch:
+  - name: Tatiana
+    resy: https://resy.com/cities/new-york-ny/venues/tatiana
+
+  - name: 4 Charles Prime Rib
+    resy: https://resy.com/cities/new-york-ny/venues/4-charles-prime-rib
+
+  - name: Torrisi
+    resy: https://resy.com/cities/new-york-ny/venues/torrisi
+
+  - name: Ambassadors Clubhouse
+    resy: https://resy.com/cities/new-york-ny/venues/ambassadors-clubhouse-new-york
+
+  - name: Bungalow
+    resy: https://resy.com/cities/new-york-ny/venues/bungalow
+
+  - name: Ha's Snack Bar
+    resy: https://resy.com/cities/new-york-ny/venues/has-snack-bar
+
+  # Kabawa books on OpenTable, 14 days out, open Tue–Sat.
+  - name: Kabawa
+    opentable: https://www.opentable.com/r/kabawa-new-york
+    next_days: 14
+    weekdays: [tue, wed, thu, fri, sat]
+
+  # Adda (East Village) books through SevenRooms, which isn't supported yet.

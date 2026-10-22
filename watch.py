@@ -86,15 +86,66 @@ def resy_session() -> requests.Session:
     return s
 
 
-def resy_venue_id(session: requests.Session, entry: dict) -> int:
+def resy_venue(session: requests.Session, entry: dict) -> tuple[int, str]:
+    """Return (venue id, booking page URL) for a Resy entry."""
+    base_url = entry["resy"].split("?")[0]
     if entry.get("resy_venue_id"):
-        return int(entry["resy_venue_id"])
+        return int(entry["resy_venue_id"]), base_url
     # https://resy.com/cities/new-york-ny/venues/lilia  or  https://resy.com/cities/ny/lilia
     parts = [p for p in urlparse(entry["resy"]).path.split("/") if p and p != "venues"]
     city, slug = parts[1], parts[-1]
     r = session.get("https://api.resy.com/3/venue", params={"url_slug": slug, "location": city}, timeout=20)
+    if r.ok:
+        venue_id = int(r.json()["id"]["resy"])
+        print(f"  {entry['name']}: Resy venue {venue_id} (from URL)")
+        return venue_id, base_url
+    # Slug didn't resolve; fall back to Resy's own name search around NYC.
+    r = session.post(
+        "https://api.resy.com/3/venuesearch/search",
+        json={
+            "query": entry.get("search", entry["name"]),
+            "geo": {"latitude": 40.7128, "longitude": -74.0060},
+            "types": ["venue"],
+            "per_page": 5,
+        },
+        timeout=20,
+    )
     r.raise_for_status()
-    return int(r.json()["id"]["resy"])
+    hits = r.json().get("search", {}).get("hits", [])
+    if not hits:
+        raise RuntimeError(f"no Resy venue found for {entry['name']!r}; add resy_venue_id to restaurants.yaml")
+    hit = hits[0]
+    venue_id = int(hit["id"]["resy"])
+    print(f"  {entry['name']}: Resy venue {venue_id} = {hit.get('name')!r} (from search; "
+          "add resy_venue_id to pin it)")
+    if hit.get("url_slug"):
+        city = hit.get("location", {}).get("url_slug") or city
+        base_url = f"https://resy.com/cities/{city}/venues/{hit['url_slug']}"
+    return venue_id, base_url
+
+
+def resy_open_dates(session: requests.Session, venue_id: int, party: int, dates: list[dt.date]) -> list[dt.date]:
+    """One calendar call tells us which days have any bookable inventory, so we only
+    fetch exact times for those. If the calendar call fails, check every date."""
+    try:
+        r = session.get(
+            "https://api.resy.com/4/venue/calendar",
+            params={
+                "venue_id": venue_id,
+                "num_seats": party,
+                "start_date": dates[0].isoformat(),
+                "end_date": dates[-1].isoformat(),
+            },
+            timeout=20,
+        )
+        r.raise_for_status()
+        available = {
+            d["date"] for d in r.json().get("scheduled", []) if d.get("inventory", {}).get("reservation") == "available"
+        }
+    except Exception as e:
+        print(f"  ! calendar lookup failed ({e}); checking every date", file=sys.stderr)
+        return dates
+    return [d for d in dates if d.isoformat() in available]
 
 
 def parse_resy_find(payload: dict) -> list[tuple[dt.datetime, str]]:
@@ -107,10 +158,9 @@ def parse_resy_find(payload: dict) -> list[tuple[dt.datetime, str]]:
 
 
 def check_resy(session: requests.Session, entry: dict, party: int, dates: list[dt.date]) -> list[Slot]:
-    venue_id = resy_venue_id(session, entry)
-    base_url = entry["resy"].split("?")[0]
+    venue_id, base_url = resy_venue(session, entry)
     slots = []
-    for day in dates:
+    for day in resy_open_dates(session, venue_id, party, dates):
         r = session.get(
             "https://api.resy.com/4/find",
             params={"lat": 0, "long": 0, "day": day.isoformat(), "party_size": party, "venue_id": venue_id},
@@ -257,7 +307,9 @@ def main() -> int:
     found: list[Slot] = []
     failed: set[str] = set()
 
+    defaults = config.get("defaults", {})
     for entry in config.get("watch", []):
+        entry = {**defaults, **entry}
         party = int(entry.get("party_size", default_party))
         window = parse_window(entry.get("times"))
         dates = dates_for(entry, today)
