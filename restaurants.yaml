@@ -11,6 +11,11 @@
 #   times:      time window, e.g. "18:00-21:30"
 #   party_size: number of people
 #   resy_venue_id: pins the exact Resy venue (the run log prints it)
+#   drop:       when the restaurant releases new tables (Resy only), e.g.
+#                 drop: {time: "11:00", days_ahead: 20, skip: [tue]}
+#               5 min before, you get a heads-up; from 30 s before to 10 min after,
+#               it checks every ~5 s and sends an urgent alert when tables appear.
+#               `skip` = weekdays with no release. Times are New York time.
 
 party_size: 2
 
@@ -21,21 +26,27 @@ defaults:
 watch:
   - name: Tatiana
     resy: https://resy.com/cities/new-york-ny/venues/tatiana
+    drop: {time: "12:00", days_ahead: 28}      # per Resy's Q&A with the restaurant
 
   - name: 4 Charles Prime Rib
     resy: https://resy.com/cities/new-york-ny/venues/4-charles-prime-rib
+    drop: {time: "09:00", days_ahead: 21}      # most guides; some say 20 days
 
   - name: Torrisi
     resy: https://resy.com/cities/new-york-ny/venues/torrisi
+    drop: {time: "10:00", days_ahead: 30}      # 30 days is official; the time is NOT confirmed
 
   - name: Ambassadors Clubhouse
     resy: https://resy.com/cities/new-york-ny/venues/ambassadors-clubhouse-new-york
+    # release time unknown; background checks only
 
   - name: Bungalow
     resy: https://resy.com/cities/new-york-ny/venues/bungalow
+    drop: {time: "11:00", days_ahead: 20, skip: [tue]}   # per Resy's interview with the owner
 
   - name: Ha's Snack Bar
     resy: https://resy.com/cities/new-york-ny/venues/has-snack-bar
+    # ~20 days out, release time unknown; background checks only
 
   # Kabawa books on OpenTable, 14 days out, open Tue–Sat.
   - name: Kabawa

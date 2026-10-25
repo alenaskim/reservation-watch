@@ -72,3 +72,29 @@ def test_seen_realerts_after_slot_disappears():
     assert s.key not in seen  # so it alerts again if it reopens
     seen = watch.next_seen({s.key: "t1"}, [], {"Lilia"}, "t2")  # check failed: keep memory
     assert s.key in seen
+
+
+def test_drops_respect_skip_and_weekdays():
+    entry = {"name": "Bungalow", "drop": {"time": "11:00", "days_ahead": 20, "skip": ["tue"]}}
+    mon, tue = dt.date(2026, 10, 26), dt.date(2026, 10, 27)
+    (d,) = watch.drops_for(entry, mon)
+    assert d.at == dt.datetime(2026, 10, 26, 11, 0) and d.released == dt.date(2026, 11, 15)
+    assert watch.drops_for(entry, tue) == []  # no release on Tuesdays
+    # released date is a Sunday; skip it if you only want Fri/Sat
+    assert watch.drops_for({**entry, "weekdays": ["fri", "sat"]}, mon) == []
+    assert watch.drops_for({"name": "x"}, mon) == []
+
+
+def test_upcoming_drops_include_tomorrow_and_running_sprint(tmp_path):
+    cfg = tmp_path / "r.yaml"
+    cfg.write_text(
+        "watch:\n"
+        "  - name: A\n    resy: https://resy.com/cities/new-york-ny/venues/a\n"
+        "    drop: {time: '09:00', days_ahead: 21}\n"
+        "  - name: B\n    opentable: https://www.opentable.com/r/b\n"
+        "    drop: {time: '09:00', days_ahead: 14}\n"
+    )
+    w = watch.Watcher(str(cfg), str(tmp_path / "s.json"), dry_run=True)
+    names = [(e["name"], d.at) for e, d in w.upcoming_drops(dt.datetime(2026, 10, 26, 9, 5))]
+    # A's sprint today is still running at 9:05, plus tomorrow's; B is OpenTable, so no sprints
+    assert names == [("A", dt.datetime(2026, 10, 26, 9, 0)), ("A", dt.datetime(2026, 10, 27, 9, 0))]

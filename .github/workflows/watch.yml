@@ -1,11 +1,8 @@
 name: Reservation watch
 
 on:
-  schedule:
-    # Every 15 minutes (UTC). GitHub often runs scheduled jobs a few minutes late.
-    # Private repos get 2,000 free Action minutes/month; each run bills at least 1 minute,
-    # so in a private repo use "*/30 * * * *" or limit the hours (see README).
-    - cron: "*/15 * * * *"
+  # Manual test runs only. The always-on server (see README) does the real watching;
+  # a schedule here as well would send duplicate alerts.
   workflow_dispatch: {}
 
 concurrency:
